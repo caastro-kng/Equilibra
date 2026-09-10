@@ -79,18 +79,23 @@ async function deleteExpense(id){
 const observer=new IntersectionObserver(es=>es.forEach(e=>e.isIntersecting&&e.target.classList.add('visible')),{threshold:.15});
 $$('.reveal').forEach(el=>observer.observe(el));
 
-let ticking=false,lastFocusedElement;
+let ticking=false,lastFocusedElement,lastScrollY=scrollY,scrollSettleTimer,chartSelection='income';
 function updateScrollMotion(){
  const y=window.scrollY,max=Math.max(1,document.documentElement.scrollHeight-innerHeight);
+ const delta=y-lastScrollY,energy=Math.min(1,Math.abs(delta)/45);
+ document.documentElement.style.setProperty('--scroll-energy',energy.toFixed(3));
+ document.documentElement.style.setProperty('--scroll-direction',delta<0?-1:1);
+ lastScrollY=y;
  $('#scrollProgress').style.transform=`scaleX(${Math.max(0,Math.min(1,y/max))})`;
  const hero=Math.min(1,y/innerHeight);
  document.documentElement.style.setProperty('--hero-scroll',hero.toFixed(3));
  const story=$('.scroll-story'),rect=story.getBoundingClientRect(),travel=story.offsetHeight-innerHeight;
  const progress=Math.max(0,Math.min(1,-rect.top/travel));
  document.documentElement.style.setProperty('--story',progress.toFixed(3));
+ $('#storyStep').textContent=String(Math.min(3,Math.floor(progress*3)+1)).padStart(2,'0');
  ticking=false;
 }
-addEventListener('scroll',()=>{if(!ticking){requestAnimationFrame(updateScrollMotion);ticking=true}},{passive:true});
+addEventListener('scroll',()=>{clearTimeout(scrollSettleTimer);scrollSettleTimer=setTimeout(()=>document.documentElement.style.setProperty('--scroll-energy',0),110);if(!ticking){requestAnimationFrame(updateScrollMotion);ticking=true}},{passive:true});
 updateScrollMotion();
 const motionScene=$('[data-motion-scene]');
 if(motionScene&& !matchMedia('(prefers-reduced-motion: reduce)').matches){
@@ -134,9 +139,31 @@ function renderDetailViews(total,subs){
  $$('[data-toggle-sub]').forEach(b=>b.onclick=()=>{const s=state.subscriptions.find(x=>x.id===b.dataset.toggleSub);if(!s)return;s.active=!s.active;save();toast(s.active?'Assinatura ativada':'Assinatura pausada')});$$('[data-edit-sub]').forEach(b=>b.onclick=()=>{const s=state.subscriptions.find(x=>x.id===b.dataset.editSub);if(s)openSubscription(s)});$$('[data-delete-sub]').forEach(b=>b.onclick=()=>{const s=state.subscriptions.find(x=>x.id===b.dataset.deleteSub);if(!s||!confirm(`Excluir a assinatura “${s.name}”?`))return;state.subscriptions=state.subscriptions.filter(x=>x.id!==s.id);save();toast('Assinatura excluída')});
 }
 
+function renderFinanceChart(expenses,subscriptions,balance){
+ const income=Number(state.income)||0,outflow=expenses+subscriptions,available=Math.max(balance,0),scale=Math.max(income,outflow,1),hasData=income>0||outflow>0,chartData=$('#chartData');
+ $('#chartEmpty').classList.toggle('hidden',hasData);chartData.classList.toggle('hidden',!hasData);
+ if(!hasData){chartData.classList.remove('chart-animate');return}
+ const allocation=[['expenses',expenses],['subscriptions',subscriptions],['balance',available]];let offset=0;
+ $('.budget-donut').setAttribute('aria-label',`Distribuição mensal: despesas ${money(expenses)}, assinaturas ${money(subscriptions)} e ${balance<0?'déficit':'saldo'} ${money(Math.abs(balance))}`);
+ allocation.forEach(([key,value])=>{const segment=$(`#segment${key[0].toUpperCase()}${key.slice(1)}`),size=Math.max(0,value/scale*100),dash=`${size} ${100-size}`;segment.setAttribute('stroke-dasharray',dash);segment.setAttribute('stroke-dashoffset',String(-offset));segment.setAttribute('aria-label',`${key==='expenses'?'Despesas':key==='subscriptions'?'Assinaturas':'Saldo disponível'}: ${money(value)}`);if(!matchMedia('(prefers-reduced-motion: reduce)').matches&&segment.animate)segment.animate([{strokeDasharray:'0 100'},{strokeDasharray:dash}],{duration:760,delay:offset*2,easing:'cubic-bezier(.2,.8,.2,1)'});offset+=size});
+ const series={
+  income:{label:'Renda mensal',short:'Renda',value:income,color:'#63a8ff',hint:'Base disponível no mês'},
+  expenses:{label:'Despesas',short:'Despesas',value:expenses,color:'#ef7d78',hint:income?`${Math.round(expenses/income*100)}% da renda`:'Saídas cadastradas'},
+  subscriptions:{label:'Assinaturas',short:'Assinaturas',value:subscriptions,color:'#8a7dff',hint:income?`${Math.round(subscriptions/income*100)}% da renda`:'Recorrências mensais'},
+  balance:{label:balance<0?'Déficit':'Saldo disponível',short:balance<0?'Déficit':'Saldo',value:balance,color:balance<0?'#ef6666':'#45e0a8',hint:balance<0?'Acima da renda':income?`${Math.round(available/income*100)}% ainda disponível`:'Saldo do período'}
+ };
+ const maxBar=Math.max(...Object.values(series).map(item=>Math.abs(item.value)),1);
+ $('#legend').innerHTML=Object.entries(series).map(([key,item],index)=>`<button type="button" class="finance-series" data-chart-series="${key}" aria-pressed="${chartSelection===key}" style="--item-index:${index};--bar-size:${Math.abs(item.value)/maxBar*100}%;--bar-color:${item.color}"><span class="legend-dot" style="background:${item.color}"></span><span><strong>${item.label}</strong><small>${money(item.value)}</small></span><span class="legend-bar"><i></i></span></button>`).join('');
+ const selectSeries=key=>{const item=series[key]||series.income;chartData.dataset.focus=key==='balance'&&balance<0?'deficit':key;$('#chartCenterLabel').textContent=item.short;$('#chartCenter').textContent=money(item.value);$('#chartCenterHint').textContent=item.hint;$$('[data-chart-series]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.chartSeries===key)));$$('[data-chart-segment]').forEach(segment=>segment.classList.toggle('is-active',balance>=0&&segment.dataset.chartSegment===key))};
+ if(!series[chartSelection])chartSelection='income';selectSeries(chartSelection);
+ $$('[data-chart-series]').forEach(button=>{button.onclick=()=>{chartSelection=button.dataset.chartSeries;selectSeries(chartSelection)};button.onmouseenter=()=>selectSeries(button.dataset.chartSeries);button.onmouseleave=()=>selectSeries(chartSelection);button.onfocus=()=>selectSeries(button.dataset.chartSeries)});
+ $$('[data-chart-segment]').forEach(segment=>{segment.onclick=()=>{chartSelection=segment.dataset.chartSegment;selectSeries(chartSelection)};segment.onmouseenter=()=>selectSeries(segment.dataset.chartSegment);segment.onmouseleave=()=>selectSeries(chartSelection);segment.onkeydown=event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();segment.click()}}});
+ chartData.classList.remove('chart-animate');void chartData.offsetWidth;chartData.classList.add('chart-animate');
+}
+
 function render(){const total=state.expenses.reduce((a,e)=>a+Number(e.value),0),subs=state.subscriptions.filter(s=>s.active).reduce((a,s)=>a+Number(s.value)/(s.period==='Anual'?12:1),0),balance=state.income-total-subs;$('#displayName').textContent=state.name||'vamos começar';$('#incomeValue').textContent=state.income?money(state.income):'—';$('#incomeHint').textContent=state.income?`Recebimento no dia ${state.payday}`:'Informe sua renda para começar';$('#expenseTotal').textContent=money(total);$('#expenseHint').textContent=state.expenses.length?`${state.expenses.length} registro${state.expenses.length>1?'s':''} no período`:'Nenhuma despesa cadastrada';$('#subscriptionTotal').textContent=money(subs);$('#subscriptionHint').textContent=state.subscriptions.length?`${state.subscriptions.length} assinatura${state.subscriptions.length>1?'s':''}`:'Nenhuma assinatura cadastrada';$('#balanceValue').textContent=state.income?money(balance):'—';renderDetailViews(total,subs);
  const list=$('#expenseList');if(!state.expenses.length)list.innerHTML=`<div class="empty-icon">↗</div><h4>Você ainda não cadastrou nenhuma despesa</h4><p>Adicione um gasto para começar a acompanhar seu mês.</p>`,list.className='empty';else{list.className='';list.innerHTML=state.expenses.map((e,index)=>`<div class="expense-row ${e.status==='paid'?'paid':''}" style="--row-index:${index}"><div><strong>${escapeHtml(e.name)}</strong><small>${e.status==='paid'?'Pago':'Pendente'} · ${e.type==='recurring'?'Recorrente':'Única'}</small></div><div class="amount"><strong>${money(e.value)}</strong><small>${shortDate(e.due)}</small></div><div class="row-actions"><button type="button" title="${e.status==='paid'?'Marcar como pendente':'Marcar como paga'}" data-pay="${e.id}">✓</button><button type="button" title="Editar" data-edit="${e.id}">✎</button><button type="button" title="Duplicar" data-copy="${e.id}">⧉</button><button type="button" title="Excluir" data-delete="${e.id}">×</button></div></div>`).join('')}
- const names={};state.expenses.forEach(e=>names[e.name]=(names[e.name]||0)+Number(e.value));const entries=Object.entries(names),hasChart=entries.length>0&&total>0,chartData=$('#chartData');$('#chartEmpty').classList.toggle('hidden',hasChart);chartData.classList.toggle('hidden',!hasChart);if(hasChart){const colors=['#45e0a8','#8a7dff','#f6c65b','#ef7d78','#63a8ff','#82918c'];let at=0;const grad=entries.map(([k,v],i)=>{const start=at;at+=v/total*100;return `${colors[i%colors.length]} ${start}% ${at}%`}).join(',');$('#bigDonut').style.background=`conic-gradient(${grad})`;$('#chartCenter').textContent=money(total);$('#legend').innerHTML=entries.map(([k,v],i)=>`<div class="legend-item" style="--item-index:${i};--bar-size:${v/total*100}%;--bar-color:${colors[i%colors.length]}"><span class="legend-dot" style="background:${colors[i%colors.length]}"></span><span class="legend-label">${escapeHtml(k)} · ${money(v)}</span><span class="legend-bar"><i></i></span></div>`).join('');chartData.classList.remove('chart-animate');void chartData.offsetWidth;chartData.classList.add('chart-animate')}else{$('#bigDonut').style.background='';$('#legend').innerHTML='';chartData.classList.remove('chart-animate')}$$('button[title]:not([aria-label])').forEach(button=>button.setAttribute('aria-label',button.title));
+ renderFinanceChart(total,subs,balance);$$('button[title]:not([aria-label])').forEach(button=>button.setAttribute('aria-label',button.title));
  $$('[data-pay]').forEach(b=>b.onclick=async()=>{const e=state.expenses.find(x=>x.id===b.dataset.pay);if(!e||b.disabled)return;b.disabled=true;try{await updateExpense(e.id,{...e,status:e.status==='paid'?'pending':'paid'});await loadExpenses();toast('Status atualizado no banco')}catch(error){console.error(error);toast('Erro ao atualizar o status');b.disabled=false}});$$('[data-edit]').forEach(b=>b.onclick=()=>openExpense(state.expenses.find(x=>x.id===b.dataset.edit)));$$('[data-copy]').forEach(b=>b.onclick=async()=>{const e=state.expenses.find(x=>x.id===b.dataset.copy);if(!e||b.disabled)return;b.disabled=true;try{await createExpense({...e,name:`${e.name} (cópia)`});await loadExpenses();toast('Despesa duplicada no banco')}catch(error){console.error(error);toast('Erro ao duplicar a despesa');b.disabled=false}});$$('[data-delete]').forEach(b=>b.onclick=async()=>{const expense=state.expenses.find(x=>x.id===b.dataset.delete);if(!expense||b.disabled||!confirm(`Excluir a despesa “${expense.name}”?`))return;b.disabled=true;try{await deleteExpense(expense.id);await loadExpenses();toast('Despesa excluída do banco')}catch(error){console.error(error);toast('Erro ao excluir a despesa');b.disabled=false}})}
 
 function showView(name){if(name==='settings'){openProfile();return}$$('.nav-item').forEach(b=>b.classList.toggle('active',b.dataset.view===name));$$('.dash-view').forEach(v=>v.classList.remove('active'));$(`#${name}View`).classList.add('active')}

@@ -47,7 +47,8 @@
 
     <section class="scroll-story" id="experiencia">
       <div class="story-stage">
-        <div class="story-progress" aria-hidden="true"><span></span></div><div class="story-count" aria-hidden="true">01 <i></i> 03</div>
+        <div class="story-progress" aria-hidden="true"><span></span></div><div class="story-count" aria-hidden="true"><strong id="storyStep">01</strong><i></i>03</div>
+        <div class="story-stream" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
         <div class="story-ambient"><i></i><i></i><i></i></div>
         <div class="story-message story-message-a"><span class="eyebrow">Quando tudo parece espalhado</span><h2>Entradas, contas e escolhas<br>disputam sua atenção.</h2></div>
         <div class="story-message story-message-b"><span class="eyebrow">O Equilibra organiza</span><h2>Cada movimento encontra<br>o seu lugar.</h2></div>
@@ -99,7 +100,7 @@
         </div>
         <div class="content-grid">
           <article class="panel"><div class="panel-head"><div><small>Despesas recentes</small><h3>Seus registros</h3></div><button class="btn btn-small" data-expense>＋ Nova despesa</button></div><div id="expenseList" class="empty"><div class="empty-icon">↗</div><h4>Você ainda não cadastrou nenhuma despesa</h4><p>Adicione um gasto para começar a acompanhar seu mês.</p></div></article>
-          <article class="panel chart-panel"><div class="panel-head"><div><small>Distribuição</small><h3>Gastos por despesa</h3></div></div><div id="chartEmpty" class="empty"><div class="empty-icon">◎</div><h4>Seus gráficos aparecerão aqui</h4><p>Registre seus gastos para visualizar a distribuição.</p></div><div id="chartData" class="chart-data hidden"><div class="chart-visual"><div class="big-donut" id="bigDonut"></div><div class="chart-center"><small>Total</small><strong id="chartCenter">R$ 0</strong></div></div><div id="legend" class="chart-legend"></div></div></article>
+          <article class="panel chart-panel"><div class="panel-head"><div><small>Interativo · visão mensal</small><h3>Fluxo financeiro</h3></div><span class="chart-live"><i></i>Tempo real</span></div><div id="chartEmpty" class="empty"><div class="empty-icon">◎</div><h4>Seu gráfico financeiro aparecerá aqui</h4><p>Informe sua renda ou registre uma movimentação.</p></div><div id="chartData" class="chart-data finance-chart hidden"><div class="chart-visual"><svg class="budget-donut" viewBox="0 0 120 120" role="img" aria-label="Distribuição da renda mensal"><circle class="donut-track" cx="60" cy="60" r="48" pathLength="100"/><circle class="donut-segment segment-expenses" id="segmentExpenses" data-chart-segment="expenses" cx="60" cy="60" r="48" pathLength="100" tabindex="0"/><circle class="donut-segment segment-subscriptions" id="segmentSubscriptions" data-chart-segment="subscriptions" cx="60" cy="60" r="48" pathLength="100" tabindex="0"/><circle class="donut-segment segment-balance" id="segmentBalance" data-chart-segment="balance" cx="60" cy="60" r="48" pathLength="100" tabindex="0"/></svg><div class="chart-center"><small id="chartCenterLabel">Renda</small><strong id="chartCenter">R$ 0</strong><span id="chartCenterHint">100% do mês</span></div></div><div id="legend" class="chart-legend" aria-label="Comparação financeira"></div></div></article>
         </div>
         </section>
         <section class="dash-view" id="expensesView">
