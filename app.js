@@ -7,6 +7,15 @@ const supabaseClient=supabase.createClient(
  'https://auiasvzouuqwslvhstgs.supabase.co',
  'sb_publishable_vGXeA5hVPUNUI3r4a-Rt9w_r0tlbEq9'
 );
+let sessionPromise;
+const ensureSession=()=>sessionPromise||(sessionPromise=(async()=>{
+ const {data:{session},error}=await supabaseClient.auth.getSession();
+ if(error)throw error;
+ if(session)return session;
+ const {data,error:signInError}=await supabaseClient.auth.signInAnonymously();
+ if(signInError)throw signInError;
+ return data.session;
+})().catch(error=>{sessionPromise=null;throw error}));
 const subscriptionCatalog=[
  {id:'custom',name:'Outro serviço',mark:'+',color:'#52605b',plans:[]},
  {id:'netflix',name:'Netflix',mark:'N',color:'#e50914',plans:[{id:'ads',name:'Padrão com anúncios',value:20.90,period:'Mensal'},{id:'standard',name:'Padrão',value:44.90,period:'Mensal'},{id:'premium',name:'Premium',value:59.90,period:'Mensal'}]},
@@ -36,23 +45,29 @@ const expensePayload=data=>({
 });
 
 async function loadExpenses(){
- const {data,error}=await supabaseClient.from('expenses').select('*').order('created_at',{ascending:false});
- if(error){console.error(error);toast('Não foi possível consultar as despesas');return}
- state.expenses=data;
- save();
+ try{
+  await ensureSession();
+  const {data,error}=await supabaseClient.from('expenses').select('*').order('created_at',{ascending:false});
+  if(error)throw error;
+  state.expenses=data;
+  save();
+ }catch(error){console.error(error);state.expenses=[];render();toast('Não foi possível conectar ao banco')}
 }
 
 async function createExpense(data){
+ await ensureSession();
  const {error}=await supabaseClient.from('expenses').insert(expensePayload(data));
  if(error)throw error;
 }
 
 async function updateExpense(id,data){
+ await ensureSession();
  const {error}=await supabaseClient.from('expenses').update(expensePayload(data)).eq('id',id);
  if(error)throw error;
 }
 
 async function deleteExpense(id){
+ await ensureSession();
  const {error}=await supabaseClient.from('expenses').delete().eq('id',id);
  if(error)throw error;
 }
