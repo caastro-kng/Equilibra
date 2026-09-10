@@ -2,6 +2,10 @@ const $=(s,p=document)=>p.querySelector(s),$$=(s,p=document)=>[...p.querySelecto
 const money=n=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(n)||0);
 const shortDate=d=>d?new Intl.DateTimeFormat('pt-BR').format(new Date(`${d}T12:00:00`)):'Sem data';
 const defaults={name:'',income:0,payday:1,expenses:[],subscriptions:[]};
+const supabaseClient=supabase.createClient(
+ 'https://auiasvzouuqwslvhstgs.supabase.co',
+ 'sb_publishable_vGXeA5hVPUNUI3r4a-Rt9w_r0tlbEq9'
+);
 const subscriptionCatalog=[
  {id:'custom',name:'Outro serviço',mark:'+',color:'#52605b',plans:[]},
  {id:'netflix',name:'Netflix',mark:'N',color:'#e50914',plans:[{id:'ads',name:'Padrão com anúncios',value:20.90,period:'Mensal'},{id:'standard',name:'Padrão',value:44.90,period:'Mensal'},{id:'premium',name:'Premium',value:59.90,period:'Mensal'}]},
@@ -16,6 +20,40 @@ const guessService=name=>subscriptionCatalog.find(service=>service.id!=='custom'
 let state=JSON.parse(localStorage.getItem('equilibra-data')||'null')||structuredClone(defaults);
 const save=()=>{localStorage.setItem('equilibra-data',JSON.stringify(state));render()};
 const toast=t=>{const el=$('#toast');el.textContent=t;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2200)};
+
+const expensePayload=data=>({
+ name:data.name,
+ value:Number(data.value),
+ due:data.due||null,
+ payment:data.payment||null,
+ status:data.status,
+ type:data.type,
+ frequency:data.frequency||null,
+ method:data.method||null,
+ notes:data.notes||null
+});
+
+async function loadExpenses(){
+ const {data,error}=await supabaseClient.from('expenses').select('*').order('created_at',{ascending:false});
+ if(error){console.error(error);toast('Não foi possível consultar as despesas');return}
+ state.expenses=data;
+ save();
+}
+
+async function createExpense(data){
+ const {error}=await supabaseClient.from('expenses').insert(expensePayload(data));
+ if(error)throw error;
+}
+
+async function updateExpense(id,data){
+ const {error}=await supabaseClient.from('expenses').update(expensePayload(data)).eq('id',id);
+ if(error)throw error;
+}
+
+async function deleteExpense(id){
+ const {error}=await supabaseClient.from('expenses').delete().eq('id',id);
+ if(error)throw error;
+}
 
 const observer=new IntersectionObserver(es=>es.forEach(e=>e.isIntersecting&&e.target.classList.add('visible')),{threshold:.15});
 $$('.reveal').forEach(el=>observer.observe(el));
@@ -49,7 +87,7 @@ function openOnboarding(){
 function openIncome(){openDrawer(`<span class="eyebrow dark">Renda</span><h2>Editar renda mensal</h2><p class="intro">O saldo disponível será recalculado automaticamente.</p><form id="incomeForm"><div class="field"><label>Valor da renda</label><input name="income" type="number" min="0" step="0.01" value="${state.income||''}" required></div><div class="field"><label>Dia do recebimento</label><input name="payday" type="number" min="1" max="31" value="${state.payday}" required></div><button class="btn btn-primary">Salvar alterações</button></form>`);$('#incomeForm').onsubmit=e=>{e.preventDefault();const d=new FormData(e.target);state.income=Number(d.get('income'));state.payday=Number(d.get('payday'));save();closeDrawer();toast('Renda atualizada')}}
 function openProfile(){openDrawer(`<span class="eyebrow dark">Perfil</span><h2>Seus dados</h2><p class="intro">Personalize como o Equilibra conversa com você.</p><form id="profileForm"><div class="field"><label>Nome de exibição</label><input name="name" value="${state.name}" required></div><button class="btn btn-primary">Salvar nome</button></form>`);$('#profileForm').onsubmit=e=>{e.preventDefault();state.name=new FormData(e.target).get('name');save();closeDrawer();toast('Nome atualizado')}}
 function expenseForm(item={}){return `<span class="eyebrow dark">Despesas</span><h2>${item.id?'Editar':'Nova'} despesa</h2><p class="intro">O nome identifica e organiza o gasto. Forma de pagamento e observações são opcionais.</p><form id="expenseForm"><div class="field"><label>Nome da despesa</label><input name="name" value="${item.name||''}" required></div><div class="field"><label>Valor</label><input name="value" type="number" min="0" step="0.01" value="${item.value||''}" required></div><div class="form-row"><div class="field"><label>Vencimento</label><input name="due" type="date" value="${item.due||''}"></div><div class="field"><label>Data do pagamento</label><input name="payment" type="date" value="${item.payment||''}"></div></div><div class="form-row"><div class="field"><label>Status</label><select name="status"><option value="pending">Pendente</option><option value="paid" ${item.status==='paid'?'selected':''}>Pago</option></select></div><div class="field"><label>Tipo</label><select name="type"><option value="single">Única</option><option value="recurring" ${item.type==='recurring'?'selected':''}>Recorrente</option></select></div></div><div class="field"><label>Frequência da recorrência</label><select name="frequency"><option>Mensal</option><option>Semanal</option><option>Anual</option></select></div><div class="field"><label>Forma de pagamento (opcional)</label><input name="method" value="${item.method||''}"></div><div class="field"><label>Observações (opcional)</label><textarea name="notes">${item.notes||''}</textarea></div><button class="btn btn-primary">Salvar despesa</button></form>`}
-function openExpense(item={}){openDrawer(expenseForm(item));$('#expenseForm').onsubmit=e=>{e.preventDefault();const d=Object.fromEntries(new FormData(e.target));d.value=Number(d.value);d.id=item.id||crypto.randomUUID();if(item.id)state.expenses=state.expenses.map(x=>x.id===item.id?d:x);else state.expenses.unshift(d);save();closeDrawer();toast(item.id?'Despesa atualizada':'Despesa adicionada')}}
+function openExpense(item={}){openDrawer(expenseForm(item));$('#expenseForm').onsubmit=async e=>{e.preventDefault();const button=e.target.querySelector('button[type="submit"],button');button.disabled=true;const d=Object.fromEntries(new FormData(e.target));try{if(item.id)await updateExpense(item.id,d);else await createExpense(d);await loadExpenses();closeDrawer();toast(item.id?'Despesa atualizada no banco':'Despesa adicionada ao banco')}catch(error){console.error(error);toast('Erro ao salvar a despesa');button.disabled=false}}}
 function openSubscription(item={}){
  const initialService=item.serviceId?catalogService(item.serviceId):guessService(item.name);
  const serviceOptions=subscriptionCatalog.map(service=>`<option value="${service.id}" ${service.id===initialService.id?'selected':''}>${service.name}</option>`).join('');
@@ -72,7 +110,7 @@ function renderDetailViews(total,subs){
 function render(){const total=state.expenses.reduce((a,e)=>a+Number(e.value),0),subs=state.subscriptions.filter(s=>s.active).reduce((a,s)=>a+Number(s.value)/(s.period==='Anual'?12:1),0),balance=state.income-total-subs;$('#displayName').textContent=state.name||'vamos começar';$('#incomeValue').textContent=state.income?money(state.income):'—';$('#incomeHint').textContent=state.income?`Recebimento no dia ${state.payday}`:'Informe sua renda para começar';$('#expenseTotal').textContent=money(total);$('#expenseHint').textContent=state.expenses.length?`${state.expenses.length} registro${state.expenses.length>1?'s':''} no período`:'Nenhuma despesa cadastrada';$('#subscriptionTotal').textContent=money(subs);$('#subscriptionHint').textContent=state.subscriptions.length?`${state.subscriptions.length} assinatura${state.subscriptions.length>1?'s':''}`:'Nenhuma assinatura cadastrada';$('#balanceValue').textContent=state.income?money(balance):'—';renderDetailViews(total,subs);
  const list=$('#expenseList');if(!state.expenses.length)list.innerHTML=`<div class="empty-icon">↗</div><h4>Você ainda não cadastrou nenhuma despesa</h4><p>Adicione um gasto para começar a acompanhar seu mês.</p>`,list.className='empty';else{list.className='';list.innerHTML=state.expenses.map(e=>`<div class="expense-row ${e.status==='paid'?'paid':''}"><div><strong>${e.name}</strong><small>${e.status==='paid'?'Pago':'Pendente'} · ${e.type==='recurring'?'Recorrente':'Única'}</small></div><div class="amount"><strong>${money(e.value)}</strong><small>${e.due||'Sem vencimento'}</small></div><div class="row-actions"><button title="Marcar como paga" data-pay="${e.id}">✓</button><button title="Editar" data-edit="${e.id}">✎</button><button title="Duplicar" data-copy="${e.id}">⧉</button><button title="Excluir" data-delete="${e.id}">×</button></div></div>`).join('')}
  const names={};state.expenses.forEach(e=>names[e.name]=(names[e.name]||0)+Number(e.value));const entries=Object.entries(names);$('#chartEmpty').classList.toggle('hidden',!!entries.length);$('#chartData').classList.toggle('hidden',!entries.length);if(entries.length){const colors=['#45e0a8','#8a7dff','#f6c65b','#ef7d78','#63a8ff','#82918c'];let at=0;const grad=entries.map(([k,v],i)=>{const start=at;at+=v/total*100;return `${colors[i%colors.length]} ${start}% ${at}%`}).join(',');$('#bigDonut').style.background=`conic-gradient(${grad})`;$('#legend').innerHTML=entries.map(([k,v],i)=>`<div class="legend-item"><span class="legend-dot" style="background:${colors[i%colors.length]}"></span>${k} · ${money(v)}</div>`).join('')}
- $$('[data-pay]').forEach(b=>b.onclick=()=>{const e=state.expenses.find(x=>x.id===b.dataset.pay);e.status=e.status==='paid'?'pending':'paid';save()});$$('[data-edit]').forEach(b=>b.onclick=()=>openExpense(state.expenses.find(x=>x.id===b.dataset.edit)));$$('[data-copy]').forEach(b=>b.onclick=()=>{const e=state.expenses.find(x=>x.id===b.dataset.copy);state.expenses.unshift({...e,id:crypto.randomUUID(),name:`${e.name} (cópia)`});save();toast('Despesa duplicada')});$$('[data-delete]').forEach(b=>b.onclick=()=>{state.expenses=state.expenses.filter(x=>x.id!==b.dataset.delete);save();toast('Despesa excluída')})}
+ $$('[data-pay]').forEach(b=>b.onclick=async()=>{const e=state.expenses.find(x=>x.id===b.dataset.pay);try{await updateExpense(e.id,{...e,status:e.status==='paid'?'pending':'paid'});await loadExpenses();toast('Status atualizado no banco')}catch(error){console.error(error);toast('Erro ao atualizar o status')}});$$('[data-edit]').forEach(b=>b.onclick=()=>openExpense(state.expenses.find(x=>x.id===b.dataset.edit)));$$('[data-copy]').forEach(b=>b.onclick=async()=>{const e=state.expenses.find(x=>x.id===b.dataset.copy);try{await createExpense({...e,name:`${e.name} (cópia)`});await loadExpenses();toast('Despesa duplicada no banco')}catch(error){console.error(error);toast('Erro ao duplicar a despesa')}});$$('[data-delete]').forEach(b=>b.onclick=async()=>{try{await deleteExpense(b.dataset.delete);await loadExpenses();toast('Despesa excluída do banco')}catch(error){console.error(error);toast('Erro ao excluir a despesa')}})}
 
 function showView(name){if(name==='settings'){openProfile();return}$$('.nav-item').forEach(b=>b.classList.toggle('active',b.dataset.view===name));$$('.dash-view').forEach(v=>v.classList.remove('active'));$(`#${name}View`).classList.add('active')}
-$$('[data-income]').forEach(b=>b.onclick=openIncome);$$('[data-edit-profile]').forEach(b=>b.onclick=openProfile);$$('[data-expense]').forEach(b=>b.onclick=()=>openExpense());$$('[data-subscription]').forEach(b=>b.onclick=()=>openSubscription());$$('.nav-item').forEach(b=>b.onclick=()=>showView(b.dataset.view));render();
+$$('[data-income]').forEach(b=>b.onclick=openIncome);$$('[data-edit-profile]').forEach(b=>b.onclick=openProfile);$$('[data-expense]').forEach(b=>b.onclick=()=>openExpense());$$('[data-subscription]').forEach(b=>b.onclick=()=>openSubscription());$$('.nav-item').forEach(b=>b.onclick=()=>showView(b.dataset.view));render();loadExpenses();
