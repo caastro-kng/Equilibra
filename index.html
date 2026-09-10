@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="styles.css" />
   <link rel="stylesheet" href="motion.css" />
   <link rel="stylesheet" href="dashboard.css" />
+  <link rel="stylesheet" href="fixes.css" />
 </head>
 <body>
   <div class="scroll-progress" aria-hidden="true"><span id="scrollProgress"></span></div>
@@ -75,15 +76,15 @@
     <section class="app-shell" id="app">
       <aside class="sidebar">
         <div class="brand"><span class="brand-mark">E</span>Equilibra</div>
-        <button class="nav-item active" data-view="overview">⌂ <span>Visão geral</span></button>
-        <button class="nav-item" data-view="expenses">↗ <span>Despesas</span></button>
-        <button class="nav-item" data-view="subscriptions">◌ <span>Assinaturas</span></button>
-        <button class="nav-item" data-view="settings">⚙ <span>Configurações</span></button>
+        <button class="nav-item active" data-view="overview" aria-label="Visão geral">⌂ <span>Visão geral</span></button>
+        <button class="nav-item" data-view="expenses" aria-label="Despesas">↗ <span>Despesas</span></button>
+        <button class="nav-item" data-view="subscriptions" aria-label="Assinaturas">◌ <span>Assinaturas</span></button>
+        <button class="nav-item" data-view="settings" aria-label="Configurações">⚙ <span>Configurações</span></button>
         <button class="back-site">← Voltar ao site</button>
       </aside>
       <div class="dashboard">
         <section class="dash-view active" id="overviewView">
-        <div class="dash-top"><div><span class="muted">Visão geral</span><h2>Olá, <span id="displayName">vamos começar</span> <button class="icon-btn" data-edit-profile>✎</button></h2></div><div class="month-control"><button>‹</button><strong id="periodLabel">Este mês</strong><button>›</button></div></div>
+        <div class="dash-top"><div><span class="muted">Visão geral</span><h2>Olá, <span id="displayName">vamos começar</span> <button class="icon-btn" data-edit-profile aria-label="Editar perfil">✎</button></h2></div><div class="month-control"><strong id="periodLabel">Todos os registros</strong></div></div>
         <div class="summary-grid">
           <article class="summary-card"><div><small>Renda mensal</small><button class="icon-btn" data-income>✎</button></div><strong id="incomeValue">—</strong><p id="incomeHint">Informe sua renda para começar</p><button class="text-action" data-income>Adicionar renda</button></article>
           <article class="summary-card"><div><small>Total de despesas</small></div><strong id="expenseTotal">R$ 0,00</strong><p id="expenseHint">Nenhuma despesa cadastrada</p><button class="text-action" data-expense>Nova despesa</button></article>
