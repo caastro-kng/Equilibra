@@ -92,8 +92,10 @@ function updateScrollMotion(){
  const story=$('.scroll-story'),rect=story.getBoundingClientRect(),travel=story.offsetHeight-innerHeight;
  const progress=Math.max(0,Math.min(1,-rect.top/travel));
  document.documentElement.style.setProperty('--story',progress.toFixed(3));
- const brandReveal=Math.max(0,Math.min(1,(progress-.62)/.18));
- const brandBurst=Math.max(0,Math.min(1,(progress-.86)/.14));
+ const finale=$('.site-finale'),finaleRect=finale.getBoundingClientRect(),finaleTravel=finale.offsetHeight-innerHeight;
+ const finaleProgress=Math.max(0,Math.min(1,-finaleRect.top/Math.max(1,finaleTravel)));
+ const brandReveal=Math.max(0,Math.min(1,(finaleProgress-.08)/.24));
+ const brandBurst=Math.max(0,Math.min(1,(finaleProgress-.62)/.38));
  document.documentElement.style.setProperty('--brand-reveal',brandReveal.toFixed(3));
  document.documentElement.style.setProperty('--brand-burst',brandBurst.toFixed(3));
  $('#storyStep').textContent=String(Math.min(3,Math.floor(progress*3)+1)).padStart(2,'0');
