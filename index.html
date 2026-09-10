@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="motion.css" />
   <link rel="stylesheet" href="dashboard.css" />
   <link rel="stylesheet" href="fixes.css" />
+  <link rel="stylesheet" href="motion-v2.css" />
 </head>
 <body>
   <div class="scroll-progress" aria-hidden="true"><span id="scrollProgress"></span></div>
@@ -23,7 +24,7 @@
   </header>
 
   <main>
-    <section class="hero">
+    <section class="hero" id="hero" data-motion-scene>
       <div class="orb orb-a"></div><div class="orb orb-b"></div>
       <div class="hero-copy reveal">
         <span class="eyebrow">Finanças pessoais, do seu jeito</span>
@@ -32,10 +33,13 @@
         <div class="hero-actions"><button class="btn btn-primary" data-open-app>Começar agora <span>→</span></button><a class="btn btn-link" href="#como-funciona">Ver como funciona ↓</a></div>
       </div>
       <div class="hero-visual" aria-label="Visualização demonstrativa do produto">
-        <div class="float-card card-income"><small>Renda mensal</small><strong>R$ 5.200</strong><span class="trend">↗ Demonstrativo</span></div>
-        <div class="float-card card-expense"><small>Despesas</small><strong>R$ 2.180</strong><span>42% da renda</span></div>
-        <div class="float-card card-balance"><small>Saldo disponível</small><strong>R$ 3.020</strong><div class="mini-line"></div></div>
-        <div class="float-card card-chart"><small>Distribuição</small><div class="donut"></div><span>Visão do mês</span></div>
+        <div class="hero-signal" aria-hidden="true"><i></i><span>Equilíbrio em tempo real</span></div>
+        <div class="scene-ring scene-ring-a" aria-hidden="true"></div><div class="scene-ring scene-ring-b" aria-hidden="true"></div>
+        <div class="float-card card-income" data-depth="1"><small>Renda mensal</small><strong>R$ 5.200</strong><span class="trend">↗ Demonstrativo</span></div>
+        <div class="float-card card-expense" data-depth="2"><small>Despesas</small><strong>R$ 2.180</strong><span>42% da renda</span></div>
+        <div class="float-card card-balance" data-depth="3"><small>Saldo disponível</small><strong>R$ 3.020</strong><div class="mini-line"></div><span class="live-dot">Atualizando agora</span></div>
+        <div class="float-card card-chart" data-depth="2"><small>Distribuição</small><div class="donut"></div><span>Visão do mês</span></div>
+        <svg class="hero-trace" viewBox="0 0 640 520" aria-hidden="true"><path d="M70 115 C175 45 235 230 335 170 S475 80 580 150 S520 365 390 320 S205 455 90 350"/><circle cx="70" cy="115" r="4"/><circle cx="580" cy="150" r="4"/><circle cx="390" cy="320" r="4"/></svg>
         <div class="center-glow"></div>
       </div>
       <span class="demo-label">Visualização demonstrativa</span>
@@ -43,6 +47,7 @@
 
     <section class="scroll-story" id="experiencia">
       <div class="story-stage">
+        <div class="story-progress" aria-hidden="true"><span></span></div><div class="story-count" aria-hidden="true">01 <i></i> 03</div>
         <div class="story-ambient"><i></i><i></i><i></i></div>
         <div class="story-message story-message-a"><span class="eyebrow">Quando tudo parece espalhado</span><h2>Entradas, contas e escolhas<br>disputam sua atenção.</h2></div>
         <div class="story-message story-message-b"><span class="eyebrow">O Equilibra organiza</span><h2>Cada movimento encontra<br>o seu lugar.</h2></div>
@@ -94,7 +99,7 @@
         </div>
         <div class="content-grid">
           <article class="panel"><div class="panel-head"><div><small>Despesas recentes</small><h3>Seus registros</h3></div><button class="btn btn-small" data-expense>＋ Nova despesa</button></div><div id="expenseList" class="empty"><div class="empty-icon">↗</div><h4>Você ainda não cadastrou nenhuma despesa</h4><p>Adicione um gasto para começar a acompanhar seu mês.</p></div></article>
-          <article class="panel chart-panel"><div class="panel-head"><div><small>Distribuição</small><h3>Gastos por despesa</h3></div></div><div id="chartEmpty" class="empty"><div class="empty-icon">◎</div><h4>Seus gráficos aparecerão aqui</h4><p>Registre seus gastos para visualizar a distribuição.</p></div><div id="chartData" class="chart-data hidden"><div class="big-donut" id="bigDonut"></div><div id="legend"></div></div></article>
+          <article class="panel chart-panel"><div class="panel-head"><div><small>Distribuição</small><h3>Gastos por despesa</h3></div></div><div id="chartEmpty" class="empty"><div class="empty-icon">◎</div><h4>Seus gráficos aparecerão aqui</h4><p>Registre seus gastos para visualizar a distribuição.</p></div><div id="chartData" class="chart-data hidden"><div class="chart-visual"><div class="big-donut" id="bigDonut"></div><div class="chart-center"><small>Total</small><strong id="chartCenter">R$ 0</strong></div></div><div id="legend" class="chart-legend"></div></div></article>
         </div>
         </section>
         <section class="dash-view" id="expensesView">
